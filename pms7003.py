@@ -80,17 +80,11 @@ class PMS7003:
         self._data = None
 
     def set_passive(self):
-        self._sensor.read()  # temp: debug line
-
         self._write(self.CMD_MODE, self.MODE_PASSIVE)
 
         # Read the entire buffer, to empty out the active junk from poweron
-        response = self._sensor.read()
+        self._sensor.read()
 
-        # Passive mode command responds with: b'BM\x00\x04\xe1\x00\x01t'
-        # TODO: We should validate this, and try again if we don't receive it
-        # I've seen the sensor start up in Active mode, despite sending this command before
-        print(response)
 
     def set_active(self):
         self._write(self.CMD_MODE, self.MODE_ACTIVE)
@@ -173,18 +167,14 @@ class PMS7003:
                 _previous_read = _raw_read
                 continue
 
-            # If we did not read anything from the wire, continue checking in 100ms
-            if not _raw_read:
+            # If we do not have the start sequence, continue checking in 100ms
+            if not _raw_read or _raw_read != self.START_SEQUENCE[1:2]:
                 sleep(0.1)
                 continue
 
             packet = bytearray()
             packet.extend(_previous_read)
             packet.extend(_raw_read)
-
-            # If packet is not the start sequence, continue checking
-            if packet != self.START_SEQUENCE:
-                continue
 
             # Read the next 30 bytes from the sensor, see packet struct at start for details
             if not self._passive:
@@ -197,7 +187,6 @@ class PMS7003:
             checksum_derived = self._checksum(packet) & 0xFF  # Low 8 bits of checksum
 
             if checksum_received != checksum_derived:
-                print(packet)
                 raise DataIntegrityError(
                     "Checksum mismatch: received {}, derived {}".format(hex(checksum_received), hex(checksum_derived))
                 )
@@ -205,7 +194,6 @@ class PMS7003:
             # Validate that the readings are not all zero
             # Some of the hardware sensors start with all-zero readings, this appears to be a bug - restarting fixes
             if sum(packet[2:-4]) == 0:
-                print(packet)
                 raise DataIntegrityError(
                     "Sensor is returning all-zero values, which seems unlikely outside of a lab"
                 )
