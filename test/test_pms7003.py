@@ -79,8 +79,6 @@ class Test_PMS7003:
         We should handle the case where the start sequence within the read buffer are not the first 2 bytes read
         Otherwise we will have many communication errors
         """
-        MOCK_START_SEQUENCE = bytearray(b'\x01')
-        MOCK_START_SEQUENCE.extend(PMS7003.START_SEQUENCE)
 
         self.mock_uart().read.side_effect = [
             b'\x00',
@@ -99,8 +97,6 @@ class Test_PMS7003:
         Handle the case where we fail to read a byte, or get invalid data midway through the start sequence
         We should continue and successfully read the next value
         """
-        MOCK_START_SEQUENCE = bytearray(b'\x01')
-        MOCK_START_SEQUENCE.extend(PMS7003.START_SEQUENCE)
 
         self.mock_uart().read.side_effect = [
             bytes(PMS7003.START_SEQUENCE[0:1]),
